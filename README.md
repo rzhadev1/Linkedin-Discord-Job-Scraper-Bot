@@ -1,5 +1,9 @@
 ### Setup
 
+
+```bash
+git clone https://github.com/haydenthai/Linkedin-Discord-Job-Scraper-Bot.git #clone it
+```
 Use python version 3.11.6
 
 (this was intended to bet setup on a mac, setup might look different on windows)
@@ -7,7 +11,7 @@ Use python version 3.11.6
 ```bash
 brew install pyenv
 pyenv install 3.11.6
-pyenv shell #set the current shell to version 3.11.6
+pyenv shell 3.11.6 #set the current shell to version 3.11.6
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
