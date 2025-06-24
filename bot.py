@@ -40,7 +40,7 @@ WHITELIST_COMPANY_IDS = {
     "Cloud9 Esports" : 3837963,
     "Spotify" : 207470,
 }
-
+RESULTS_PER_SEARCH = 50
 intents = discord.Intents.default()
 Base = declarative_base()
 
@@ -205,7 +205,7 @@ class DiscordBot(commands.Bot):
 
     async def job_task(self):
         channel_id = int(os.getenv('CHANNEL_ID'))
-        full_time_jobs = scrape_jobs(linkedin_company_ids=list(WHITELIST_COMPANY_IDS.values()), site_name=['linkedin'], offset=self.offset)
+        full_time_jobs = scrape_jobs(linkedin_company_ids=list(WHITELIST_COMPANY_IDS.values()), results_wanted=RESULTS_PER_SEARCH, site_name=['linkedin'], offset=self.offset)
         await self.post_jobs(full_time_jobs, channel_id)
 
     async def on_ready(self):
