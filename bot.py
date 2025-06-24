@@ -144,6 +144,7 @@ class DiscordBot(commands.Bot):
             help_command=None,
         )
         self.logger = logger
+        self.offset = 0
         self.chatgpt_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.session = s
 
@@ -187,9 +188,8 @@ class DiscordBot(commands.Bot):
                     await target_channel.send(job_info)
                     self.session.add(FullTimeJob(job_id=row['id'], application_url=row['job_url'], job_title=row['title'],
                                                 company_name=row['company'], company_url=row['company_url']))
-                    self.logger.info(f"Posting {row['id']}, {row['title']}, {row['company']}, {row['job_url']}")
-                else:
-                    self.logger.info(f"Already exists: {row['id']}.")
+                    self.logger.info(f"Posting {row['title']}, {row['company']}, {row['job_url']}")
+                    self.offset += 1
 
         except Exception as e:
             self.logger.error(f"Error processing new jobs: {e}")
@@ -205,7 +205,7 @@ class DiscordBot(commands.Bot):
 
     async def job_task(self):
         channel_id = int(os.getenv('CHANNEL_ID'))
-        full_time_jobs = scrape_jobs(linkedin_company_ids=list(WHITELIST_COMPANY_IDS.values()), site_name=['linkedin'])
+        full_time_jobs = scrape_jobs(linkedin_company_ids=list(WHITELIST_COMPANY_IDS.values()), site_name=['linkedin'], offset=self.offset)
         await self.post_jobs(full_time_jobs, channel_id)
 
     async def on_ready(self):
