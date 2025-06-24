@@ -14,12 +14,33 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import Column, Integer, String
 
-whitelist_company_ids = [
-    207470, # spotify
-    167212, # crunchyroll
-    13282,  # nexon
-    81911983 # hybe americas
-]
+WHITELIST_COMPANY_IDS = {
+    "KPOPCENTER" : 101002223,
+    "K-PLAY! FEST" : 79535575,
+    "POP TOKKI" : 90526886,
+    "WEVERSE AMERICA INC." : 90427386,
+    "Goldenvoice" : 85104963,
+    "HYBE America" : 81911983,
+    "EVERLAST KOREA" : 80798089,
+    "miHoYo" : 79090097,
+    "Kpopconcerts" : 74027290,
+    "Helix Publicity" : 72643108,
+    "KpopWise" : 65849007,
+    "Studio PAV" : 28968657,
+    "hello82" : 26573466, 
+    "WEBTOON" : 18913480,
+    "Gen.G" : 18148981,
+    "KOHAI" : 17963078,
+    "DIVE Studios" : 14735324,
+    "Nexon America" : 13282,
+    "The Orchard" : 19615,
+    "The Lippin Group" : 27326,
+    "Crunchyroll" : 167212,
+    "CJ ENM America" : 60880015,
+    "Cloud9 Esports" : 3837963,
+    "Spotify" : 207470,
+}
+
 intents = discord.Intents.default()
 Base = declarative_base()
 
@@ -150,11 +171,11 @@ class DiscordBot(commands.Bot):
             self.logger.error(f"No channel with ID {channel_id} found.")
             return 
 
-        JobModel = FullTimeJob
-        for index, row in jobs.iterrows():
-            query = self.session.query(JobModel).filter(JobModel.job_id == row['id']).first()
-            if query is None:
-                job_info = f""">>> ## {''.join(random.choices(['🎉', '👏', '💼', '🔥', '💻'], k=1))} [{row['company']}](<{row['company_url']}>) just posted a new job! 
+        try:
+            for index, row in jobs.iterrows():
+                query = self.session.query(FullTimeJob).filter(FullTimeJob.job_id == row['id']).first()
+                if query is None:
+                    job_info = f""">>> ## {''.join(random.choices(['🎉', '👏', '💼', '🔥', '💻'], k=1))} [{row['company']}](<{row['company_url']}>) just posted a new job! 
 
 ### **Role:** 
 [**{row['title']}**](<{row['job_url']}>)
@@ -163,23 +184,16 @@ class DiscordBot(commands.Bot):
 {row['location']}
 ---
                 """
-                try:
-                    # filter using chatgpt
-                    response = self.chatgpt_client.responses.create(
-                        model=os.getenv("CHATGPT_MODEL"),
-                        instructions="You are trying to determine if a job is relevant to you as someone who works in entertainment, specifically in creative jobs, or in marketing, artist support or operations. Answer with exactly yes or no only if a job is relevant to you. Use all lower case and no extra punctuation in your answers.",
-                        input=f"Is the job title {row['title']} at the company {row['company']} relevant to you?"
-                    )
-                    cleaned = ''.join([i for i in response.output_text if i.isalpha()]).lower()
-                    self.logger.info(f"ChatGPT: {cleaned}, {row['title']}, {row['company']}, {row['job_url']}")
-                    if cleaned == "yes":
-                        await target_channel.send(job_info)
-
-                    # we always add, so that we don't reprompt chatgpt
-                    self.session.add(JobModel(job_id=row['id'], application_url=row['job_url'], job_title=row['title'],
+                    await target_channel.send(job_info)
+                    self.session.add(FullTimeJob(job_id=row['id'], application_url=row['job_url'], job_title=row['title'],
                                                 company_name=row['company'], company_url=row['company_url']))
-                except Exception as e:
-                    self.logger.error(f"Error processing job: {row['title']}, {row['company']}, {row['job_url']}, chatgpt: {response.error}")
+                    self.logger.info(f"Posting {row['title']}, {row['company']}, {row['job_url']}")
+
+        except Exception as e:
+            self.logger.error(f"Error processing new jobs: {e}")
+            self.session.rollback()
+        else:
+            self.session.commit()
 
     @tasks.loop(seconds=0)
     async def job_posting_task(self):
@@ -189,13 +203,16 @@ class DiscordBot(commands.Bot):
 
     async def job_task(self):
         channel_id = int(os.getenv('CHANNEL_ID'))
-        full_time_jobs = scrape_jobs(linkedin_company_ids=whitelist_company_ids, site_name=['linkedin'])
+        full_time_jobs = scrape_jobs(linkedin_company_ids=list(WHITELIST_COMPANY_IDS.values()), site_name=['linkedin'])
         await self.post_jobs(full_time_jobs, channel_id)
 
     async def on_ready(self):
         print('ready')
         self.job_posting_task.start()
 
-load_dotenv()
-bot = DiscordBot(s=session)
-bot.run(os.getenv("TOKEN"))
+try:
+    load_dotenv()
+    bot = DiscordBot(s=session)
+    bot.run(os.getenv("TOKEN"))
+except:
+    session.close()
