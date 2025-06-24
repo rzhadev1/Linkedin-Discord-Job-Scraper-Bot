@@ -173,8 +173,8 @@ class DiscordBot(commands.Bot):
 
         try:
             for index, row in jobs.iterrows():
-                query = self.session.query(FullTimeJob).filter(FullTimeJob.job_id == row['id']).first()
-                if query is None:
+                query = self.session.query(FullTimeJob).filter(FullTimeJob.job_id == row['id'])
+                if query.first() is None:
                     job_info = f""">>> ## {''.join(random.choices(['🎉', '👏', '💼', '🔥', '💻'], k=1))} [{row['company']}](<{row['company_url']}>) just posted a new job! 
 
 ### **Role:** 
@@ -187,7 +187,9 @@ class DiscordBot(commands.Bot):
                     await target_channel.send(job_info)
                     self.session.add(FullTimeJob(job_id=row['id'], application_url=row['job_url'], job_title=row['title'],
                                                 company_name=row['company'], company_url=row['company_url']))
-                    self.logger.info(f"Posting {row['title']}, {row['company']}, {row['job_url']}")
+                    self.logger.info(f"Posting {row['id']}, {row['title']}, {row['company']}, {row['job_url']}")
+                else:
+                    self.logger.info(f"Already exists: {row['id']}.")
 
         except Exception as e:
             self.logger.error(f"Error processing new jobs: {e}")
